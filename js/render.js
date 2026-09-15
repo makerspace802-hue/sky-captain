@@ -45,11 +45,22 @@
         var a = rnd() * 6.283, d = 500 + rnd() * 5200;
         var w = 120 + rnd() * 420, h = 90 + rnd() * 320, rot = rnd() * 3.14;
         var g = desert ? 165 + rnd() * 40 : 70 + rnd() * 70;
-        arr.push({
-          x: Math.cos(a) * d, z: Math.sin(a) * d, w: w, h: h, rot: rot,
-          c: desert ? "rgb(" + Math.round(g + 40) + "," + Math.round(g) + "," + Math.round(g - 60) + ")"
-            : (rnd() < 0.22 ? "rgb(112,118,128)" : "rgb(" + Math.round(g - 30) + "," + Math.round(g + 20) + "," + Math.round(g - 45) + ")")
-        });
+        var kind = 0, rk = rnd(); // 0 field, 1 forest, 2 water, 3 urban
+        if (!desert) {
+          if (d < 2600 && rk > 0.86) kind = 3;
+          else if (rk > 0.80) kind = 2;
+          else if (rk > 0.62) kind = 1;
+        } else if (rk > 0.975) kind = 2; // desert oasis lake
+        var c;
+        if (kind === 2) c = "rgb(58,110,160)";
+        else if (desert) c = "rgb(" + Math.round(g + 40) + "," + Math.round(g) + "," + Math.round(g - 60) + ")";
+        else c = (rnd() < 0.22 ? "rgb(112,118,128)" : "rgb(" + Math.round(g - 30) + "," + Math.round(g + 20) + "," + Math.round(g - 45) + ")");
+        var blobs = null;
+        if (kind === 1 || kind === 3) {
+          blobs = [];
+          for (var b = 0; b < 6; b++) blobs.push({ ox: (rnd() - 0.5) * w * 0.8, oz: (rnd() - 0.5) * h * 0.8, s: 0.5 + rnd() });
+        }
+        arr.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, w: w, h: h, rot: rot, c: c, kind: kind, blobs: blobs });
       }
       this.patches[code] = arr;
       return arr;
@@ -83,14 +94,19 @@
       var sh = fl.wind.turb * (m.onGround ? 0 : 1) * 6 + (fl.stalled ? 5 : 0);
       this.shakeX = (Math.random() - 0.5) * sh; this.shakeY = (Math.random() - 0.5) * sh;
 
-      function project(x, y, z) {
+      function toCam(x, y, z) {
         var dx = x - eye.x, dy = y - eye.y, dz = z - eye.z;
-        var Xc = dx * Rv.x + dy * Rv.y + dz * Rv.z;
-        var Yc = dx * Uv.x + dy * Uv.y + dz * Uv.z;
-        var Zc = dx * F.x + dy * F.y + dz * F.z;
-        if (Zc < 1.5) return null;
-        return { x: cx0 + Xc / Zc * f + R.shakeX, y: cy0 - Yc / Zc * f + R.shakeY, z: Zc };
+        return { x: dx * Rv.x + dy * Rv.y + dz * Rv.z, y: dx * Uv.x + dy * Uv.y + dz * Uv.z, z: dx * F.x + dy * F.y + dz * F.z };
       }
+      function fromCam(c) {
+        return { x: cx0 + c.x / c.z * f + R.shakeX, y: cy0 - c.y / c.z * f + R.shakeY, z: c.z };
+      }
+      function project(x, y, z) {
+        var c = toCam(x, y, z);
+        if (c.z < 1.5) return null;
+        return fromCam(c);
+      }
+      project.cam = toCam; project.unproject = fromCam;
 
       /* ----- sky ----- */
       var sky = ctx.createLinearGradient(0, 0, 0, H);
@@ -218,24 +234,52 @@
       ctx.save();
       for (var i = 0; i < Math.min(n, patches.length); i++) {
         var p = patches[i];
-        // rotate rect corners
+        if (p.kind === 3) { this._cityBlock(ctx, project, p, night, W, H); continue; }
         var cs = Math.cos(p.rot), sn = Math.sin(p.rot), hw = p.w / 2, hh = p.h / 2;
-        var pts = [];
         var corners = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]];
-        var ok = true;
+        var pts3 = [];
         for (var k = 0; k < 4; k++) {
-          var lx = p.x + corners[k][0] * cs - corners[k][1] * sn;
-          var lz = p.z + corners[k][0] * sn + corners[k][1] * cs;
-          var pr = project(lx, 0.5, lz);
-          if (!pr || pr.x < -300 || pr.x > W + 300 || pr.y < -200 || pr.y > H + 200) { if (!pr) { ok = false; break; } }
-          pts.push(pr || { x: -9999, y: -9999 });
+          pts3.push([p.x + corners[k][0] * cs - corners[k][1] * sn, 0.5,
+                     p.z + corners[k][0] * sn + corners[k][1] * cs]);
         }
-        if (!ok) continue;
-        ctx.fillStyle = night ? "rgba(16,24,40,0.9)" : p.c;
+        var pts = this._clipPoly(project, pts3);
+        if (!pts) continue;
+        var x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, j;
+        for (j = 0; j < pts.length; j++) {
+          if (pts[j].x < x0) x0 = pts[j].x; if (pts[j].x > x1) x1 = pts[j].x;
+          if (pts[j].y < y0) y0 = pts[j].y; if (pts[j].y > y1) y1 = pts[j].y;
+        }
+        if (x1 < -50 || x0 > W + 50 || y1 < -50 || y0 > H + 50) continue;
+        if (p.kind === 2) ctx.fillStyle = night ? "rgb(10,18,32)" : p.c;
+        else if (p.kind === 1) ctx.fillStyle = night ? "rgba(16,24,40,0.9)" : "rgb(46,84,44)";
+        else ctx.fillStyle = night ? "rgba(16,24,40,0.9)" : p.c;
         ctx.beginPath();
         ctx.moveTo(pts[0].x, pts[0].y);
-        for (var j = 1; j < 4; j++) ctx.lineTo(pts[j].x, pts[j].y);
+        for (j = 1; j < pts.length; j++) ctx.lineTo(pts[j].x, pts[j].y);
         ctx.closePath(); ctx.fill();
+        if (p.kind === 1) { // tree canopy blobs
+          var pc = project(p.x, 3, p.z);
+          if (pc && pc.z < 2600) {
+            var tsc = U.clamp(1400 / pc.z, 0.3, 4);
+            ctx.fillStyle = night ? "rgb(10,18,26)" : "rgb(34,66,34)";
+            for (var b = 0; b < p.blobs.length; b++) {
+              var bl = p.blobs[b];
+              var pb = project(p.x + bl.ox * cs - bl.oz * sn, 4, p.z + bl.ox * sn + bl.oz * cs);
+              if (pb && pb.x > -40 && pb.x < W + 40 && pb.y > -40 && pb.y < H + 40) {
+                var tr = 9 * bl.s * tsc;
+                ctx.beginPath(); ctx.ellipse(pb.x, pb.y, tr * 1.4, tr * 0.7, 0, 0, 6.29); ctx.fill();
+              }
+            }
+          }
+        }
+        if (p.kind === 2 && !night) { // water sun glint
+          var pw = project(p.x, 1, p.z);
+          if (pw && pw.z < 4000 && pw.z > 100) {
+            ctx.fillStyle = "rgba(255,255,255,0.18)";
+            var gr = U.clamp(30000 / pw.z, 3, 60);
+            ctx.beginPath(); ctx.ellipse(pw.x, pw.y, gr, gr * 0.25, 0, 0, 6.29); ctx.fill();
+          }
+        }
       }
       ctx.restore();
       // city lights at night: sprinkles near airport
@@ -249,19 +293,58 @@
       }
     },
 
-    _poly: function (ctx, project, pts3, style, stroke) {
-      var pts = [];
-      for (var i = 0; i < pts3.length; i++) {
-        var pr = project(pts3[i][0], pts3[i][1], pts3[i][2]);
-        if (!pr) return;
-        pts.push(pr);
+    _cityBlock: function (ctx, project, p, night, W, H) {
+      var cs = Math.cos(p.rot), sn = Math.sin(p.rot), hw = p.w / 2, hh = p.h / 2;
+      var cn = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]];
+      this._poly(ctx, project, [
+        [p.x + cn[0][0] * cs - cn[0][1] * sn, 0.5, p.z + cn[0][0] * sn + cn[0][1] * cs],
+        [p.x + cn[1][0] * cs - cn[1][1] * sn, 0.5, p.z + cn[1][0] * sn + cn[1][1] * cs],
+        [p.x + cn[2][0] * cs - cn[2][1] * sn, 0.5, p.z + cn[2][0] * sn + cn[2][1] * cs],
+        [p.x + cn[3][0] * cs - cn[3][1] * sn, 0.5, p.z + cn[3][0] * sn + cn[3][1] * cs]
+      ], night ? "rgb(18,26,42)" : "rgb(126,132,140)");
+      var pc = project(p.x, 10, p.z);
+      if (!pc || pc.z > 3500) return; // buildings only when close enough to see
+      var hd = U.rad2deg(p.rot);
+      for (var b = 0; b < p.blobs.length; b++) {
+        var bl = p.blobs[b];
+        this._box(ctx, project, p.x + bl.ox * cs - bl.oz * sn, p.z + bl.ox * sn + bl.oz * cs,
+          16 + bl.s * 16, 9 + bl.s * 22, 14 + bl.s * 12, hd,
+          night ? "#232f4a" : (b % 2 ? "#aab3c0" : "#9aa4b4"), night);
       }
+    },
+
+    _poly: function (ctx, project, pts3, style, stroke) {
+      var pts = this._clipPoly(project, pts3);
+      if (!pts) return;
       ctx.beginPath();
       ctx.moveTo(pts[0].x, pts[0].y);
       for (var j = 1; j < pts.length; j++) ctx.lineTo(pts[j].x, pts[j].y);
       ctx.closePath();
       if (style) { ctx.fillStyle = style; ctx.fill(); }
       if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1.5; ctx.stroke(); }
+    },
+
+    // Sutherland-Hodgman clip of a world-space polygon against the near
+    // plane (z >= 1.5), then project. Returns screen pts, or null only when
+    // the whole polygon is behind the camera. Runways/taxiways stay visible
+    // right up to (and under) the nose instead of popping out.
+    _clipPoly: function (project, pts3) {
+      var cam = [];
+      for (var i = 0; i < pts3.length; i++) cam.push(project.cam(pts3[i][0], pts3[i][1], pts3[i][2]));
+      var out = [], NZ = 1.5, j, a, b;
+      for (j = 0; j < cam.length; j++) {
+        a = cam[j]; b = cam[(j + 1) % cam.length];
+        var ain = a.z >= NZ, bin = b.z >= NZ;
+        if (ain) out.push(a);
+        if (ain !== bin) {
+          var t = (NZ - a.z) / (b.z - a.z);
+          out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: NZ });
+        }
+      }
+      if (out.length < 3) return null;
+      var pts = [];
+      for (j = 0; j < out.length; j++) pts.push(project.unproject(out[j]));
+      return pts;
     },
 
     _airfield: function (ctx, project, fl, night) {
@@ -299,15 +382,23 @@
       // taxi-to-gate guidance line (own route, cyan)
       var m = fl.model;
       if (fl.phase === "TAXI_OUT" || fl.phase === "HOLD_SHORT" || fl.phase === "TAXI_IN") {
-        var tgt = fl.phase === "TAXI_IN" && fl.fixes.length ? fl.fixes[0] : A.hold;
-        var a = project(m.x, 1.2, m.z), b = project((m.x + tgt.x) / 2, 1.2, (m.z + tgt.z) / 2), c = project(tgt.x, 1.2, tgt.z);
-        if (a && c) {
-          ctx.strokeStyle = "rgba(80,220,255,0.85)"; ctx.lineWidth = 3; ctx.setLineDash([10, 8]);
-          ctx.beginPath(); ctx.moveTo(a.x, a.y);
-          if (b) ctx.lineTo(b.x, b.y);
-          ctx.lineTo(c.x, c.y); ctx.stroke(); ctx.setLineDash([]);
+        var wps = [{ x: m.x, z: m.z }];
+        if (fl.phase === "TAXI_IN" && fl.fixes.length) wps.push(fl.fixes[0]);
+        else { wps.push(A.entry); wps.push(A.hold); }
+        ctx.strokeStyle = "rgba(80,220,255,0.85)"; ctx.lineWidth = 3; ctx.setLineDash([10, 8]);
+        ctx.beginPath();
+        var started = false;
+        for (var wi = 0; wi < wps.length; wi++) {
+          var wpp = project(wps[wi].x, 1.2, wps[wi].z);
+          if (!wpp) { started = false; continue; }
+          if (!started) { ctx.moveTo(wpp.x, wpp.y); started = true; }
+          else ctx.lineTo(wpp.x, wpp.y);
         }
+        ctx.stroke(); ctx.setLineDash([]);
       }
+      // taxiway direction signs
+      this._taxiSign(ctx, project, A.hold.x - A.dir.x * 25 + A.perp.x * 30, A.hold.z - A.dir.z * 25 + A.perp.z * 30, "A", night);
+      this._taxiSign(ctx, project, A.entry.x - A.perp.x * 25, A.entry.z - A.perp.z * 25, "A \u2197", night);
       // hold-short bars
       var hb1 = project(A.hold.x - A.dir.x * 10, 1, A.hold.z - A.dir.z * 10);
       var hb2 = project(A.hold.x + A.dir.x * 10, 1, A.hold.z + A.dir.z * 10);
@@ -323,11 +414,23 @@
       // centerline dashes
       ctx.fillStyle = night ? "#cfd6ff" : "#f2f2f2";
       for (var s = -A.len / 2 + 80; s < A.len / 2 - 40; s += 60) {
-        var p1 = project(A.thr.x + A.dir.x * (s + A.len / 2) * 0 + A.dir.x * (s + A.len / 2) - A.dir.x * 0, 0, 0); // placeholder
-        // compute along-point properly:
         var ax = A.thr.x + A.dir.x * (s + A.len / 2), az = A.thr.z + A.dir.z * (s + A.len / 2);
         var d1 = project(ax, 1, az), d2 = project(ax + A.dir.x * 24, 1, az + A.dir.z * 24);
         if (d1 && d2) { ctx.strokeStyle = night ? "#cfd6ff" : "#f2f2f2"; ctx.lineWidth = Math.max(1, 900 / d1.z); ctx.beginPath(); ctx.moveTo(d1.x, d1.y); ctx.lineTo(d2.x, d2.y); ctx.stroke(); }
+      }
+      // touchdown-zone markings (landing end): pairs either side of centerline
+      for (var tz = 0; tz < 5; tz++) {
+        var tzd = 170 + tz * 150;
+        for (var tzs = -1; tzs <= 1; tzs += 2) {
+          var tzx = A.thr.x + A.dir.x * tzd + A.perp.x * tzs * 9;
+          var tzz = A.thr.z + A.dir.z * tzd + A.perp.z * tzs * 9;
+          this._poly(ctx, project, [
+            [tzx - A.dir.x * 11 - A.perp.x * tzs * 1.8, 0.9, tzz - A.dir.z * 11 - A.perp.z * tzs * 1.8],
+            [tzx + A.dir.x * 11 - A.perp.x * tzs * 1.8, 0.9, tzz + A.dir.z * 11 - A.perp.z * tzs * 1.8],
+            [tzx + A.dir.x * 11 + A.perp.x * tzs * 1.8, 0.9, tzz + A.dir.z * 11 + A.perp.z * tzs * 1.8],
+            [tzx - A.dir.x * 11 + A.perp.x * tzs * 1.8, 0.9, tzz - A.dir.z * 11 + A.perp.z * tzs * 1.8]
+          ], night ? "#9aa4c0" : "#e8e8e8");
+        }
       }
       // threshold piano keys
       for (var tk = 0; tk < 2; tk++) {
@@ -348,6 +451,12 @@
         ctx.textAlign = "center";
         ctx.fillText(SC.Airfield.rwyName(A.hdg), des.x, des.y);
       }
+      var des2 = project(A.far.x - A.dir.x * 90, 1, A.far.z - A.dir.z * 90);
+      if (des2 && des2.z < 2500) {
+        ctx.fillStyle = "#fff"; ctx.font = "bold " + Math.max(10, Math.min(46, 26000 / des2.z)) + "px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(SC.Airfield.rwyName(U.wrap360(A.hdg + 180)), des2.x, des2.y);
+      }
       // edge lights at night + approach flashers
       if (night) {
         for (var e = -A.len / 2; e <= A.len / 2; e += 120) {
@@ -360,6 +469,21 @@
         // green threshold / red end
         var th = project(A.thr.x, 1.5, A.thr.z);
         if (th) { ctx.fillStyle = "#3ddc84"; ctx.fillRect(th.x - 6, th.y - 2, 12, 4); }
+      }
+      // REIL: runway-end identifier strobes at both thresholds
+      var flash = (this.t % 1.0) < 0.12;
+      for (var re = 0; re < 2; re++) {
+        var rb0 = re === 0 ? A.thr : A.far, rsgn = re === 0 ? 1 : -1;
+        for (var rs = -1; rs <= 1; rs += 2) {
+          var rx = rb0.x - A.dir.x * rsgn * 12 + A.perp.x * rs * (A.w / 2 + 6);
+          var rz = rb0.z - A.dir.z * rsgn * 12 + A.perp.z * rs * (A.w / 2 + 6);
+          var rp = project(rx, 2, rz);
+          if (rp && rp.z < 6000) {
+            ctx.fillStyle = flash ? "#ffffff" : (night ? "rgba(200,200,200,0.5)" : "rgba(120,120,120,0.6)");
+            var rsz = U.clamp(6000 / rp.z, 2, 8);
+            ctx.fillRect(rp.x - rsz / 2, rp.y - rsz / 2, rsz, rsz);
+          }
+        }
       }
       // approach light rabbits (arrival runway)
       if (fl.sceneMode === "LOCAL_ARR" || (fl.mode === "lesson" && fl.lessonId === "T4")) {
@@ -394,9 +518,48 @@
           if (lp) ctx.fillRect(lp.x - 1.5, lp.y - 1.5, 3, 3);
         }
       }
+      // service road parallel to the runway (far side) + access spur to apron
+      (function () {
+        var sax = A.thr.x - A.dir.x * 200 - A.perp.x * 80, saz = A.thr.z - A.dir.z * 200 - A.perp.z * 80;
+        var sbx = A.far.x + A.dir.x * 200 - A.perp.x * 80, sbz = A.far.z + A.dir.z * 200 - A.perp.z * 80;
+        strip({ x: sax, z: saz }, { x: sbx, z: sbz }, 10, 0.55, night ? "#101828" : "#5f6a63");
+        strip({ x: g0.x - A.dir.x * 260 + A.perp.x * 165, z: g0.z - A.dir.z * 260 + A.perp.z * 165 },
+              { x: g0.x - A.dir.x * 700 + A.perp.x * 165, z: g0.z - A.dir.z * 700 + A.perp.z * 165 },
+              12, 0.55, night ? "#101828" : "#5f6a63");
+      })();
       // terminal + tower boxes
       this._box(ctx, project, g0.x + A.perp.x * 60 - A.dir.x * 40, g0.z + A.perp.z * 60 - A.dir.z * 40, 130, 16, 40, A.hdg, night ? "#1c2740" : "#b9c2cf", night);
-      this._box(ctx, project, g0.x + A.perp.x * 120 + A.dir.x * 60, g0.z + A.perp.z * 120 + A.dir.z * 60, 14, 42, 14, A.hdg, night ? "#24304a" : "#9aa5b5", night);
+      var twX = g0.x + A.perp.x * 120 + A.dir.x * 60, twZ = g0.z + A.perp.z * 120 + A.dir.z * 60;
+      this._box(ctx, project, twX, twZ, 14, 42, 14, A.hdg, night ? "#24304a" : "#9aa5b5", night);
+      this._box(ctx, project, twX, twZ, 20, 7, 20, A.hdg, night ? "#9fd0ff" : "#54748f", night, 42); // glass cab
+      // hangar row
+      for (var hg = 0; hg < 3; hg++) {
+        this._box(ctx, project, g0.x - A.dir.x * (230 + hg * 95) + A.perp.x * 150, g0.z - A.dir.z * (230 + hg * 95) + A.perp.z * 150,
+          70, 14, 46, A.hdg, night ? "#1a2438" : "#a7b2c2", night);
+      }
+      // fuel farm: white storage tanks
+      for (var ff = 0; ff < 2; ff++) {
+        this._box(ctx, project, g1.x + A.dir.x * (210 + ff * 70) + A.perp.x * 195, g1.z + A.dir.z * (210 + ff * 70) + A.perp.z * 195,
+          34, 10, 34, A.hdg, night ? "#3a4a66" : "#e4e8ee", night);
+      }
+      // apron floodlight masts
+      for (var lm = 0; lm < 3; lm++) {
+        var lxf = g0.x + A.dir.x * (lm * 170 - 60) + A.perp.x * 215, lzf = g0.z + A.dir.z * (lm * 170 - 60) + A.perp.z * 215;
+        var lb = project(lxf, 0, lzf), lt = project(lxf, 18, lzf);
+        if (lb && lt && lb.z < 3000) {
+          ctx.strokeStyle = night ? "#3a4a66" : "#6a7484"; ctx.lineWidth = Math.max(1, 300 / lb.z);
+          ctx.beginPath(); ctx.moveTo(lb.x, lb.y); ctx.lineTo(lt.x, lt.y); ctx.stroke();
+          var lr = U.clamp(2400 / lb.z, 2, 7);
+          if (night) {
+            var halo = ctx.createRadialGradient(lt.x, lt.y, 1, lt.x, lt.y, lr * 5);
+            halo.addColorStop(0, "rgba(255,240,200,0.9)"); halo.addColorStop(1, "rgba(255,240,200,0)");
+            ctx.fillStyle = halo;
+            ctx.beginPath(); ctx.arc(lt.x, lt.y, lr * 5, 0, 6.29); ctx.fill();
+          }
+          ctx.fillStyle = night ? "#fff2cc" : "#c9cfd8";
+          ctx.fillRect(lt.x - lr / 2, lt.y - lr / 2, lr, lr);
+        }
+      }
       // parked aircraft silhouettes at gates
       for (var gi = 0; gi < A.gates.length; gi += 3) {
         if (gi === fl.gate && fl.sceneMode === "LOCAL_DEP") continue;
@@ -420,17 +583,34 @@
       }
     },
 
-    _box: function (ctx, project, x, z, w, h, dpt, hdg, color, night) {
+    _box: function (ctx, project, x, z, w, h, dpt, hdg, color, night, y0) {
+      y0 = y0 || 0;
       var Hr = U.deg2rad(hdg);
       var dx = Math.sin(Hr), dz = -Math.cos(Hr), px = Math.cos(Hr), pz = Math.sin(Hr);
       function corner(ax, yy, az) { return [x + dx * ax + px * az, yy, z + dz * ax + pz * az]; }
       // front face + top
-      this._poly(ctx, project, [corner(-w / 2, 0, -dpt / 2), corner(w / 2, 0, -dpt / 2), corner(w / 2, h, -dpt / 2), corner(-w / 2, h, -dpt / 2)], color);
-      this._poly(ctx, project, [corner(-w / 2, h, -dpt / 2), corner(w / 2, h, -dpt / 2), corner(w / 2, h, dpt / 2), corner(-w / 2, h, dpt / 2)], night ? "#2a3a58" : "#8a94a6");
+      this._poly(ctx, project, [corner(-w / 2, y0, -dpt / 2), corner(w / 2, y0, -dpt / 2), corner(w / 2, y0 + h, -dpt / 2), corner(-w / 2, y0 + h, -dpt / 2)], color);
+      this._poly(ctx, project, [corner(-w / 2, y0 + h, -dpt / 2), corner(w / 2, y0 + h, -dpt / 2), corner(w / 2, y0 + h, dpt / 2), corner(-w / 2, y0 + h, dpt / 2)], night ? "#2a3a58" : "#8a94a6");
       if (night) { // lit windows strip
-        var w1 = project(x - w / 3, h * 0.6, z), w2 = project(x + w / 3, h * 0.6, z);
+        var w1 = project(x - w / 3, y0 + h * 0.6, z), w2 = project(x + w / 3, y0 + h * 0.6, z);
         if (w1 && w2) { ctx.strokeStyle = "rgba(255,210,130,0.9)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(w1.x, w1.y); ctx.lineTo(w2.x, w2.y); ctx.stroke(); }
       }
+    },
+
+    _taxiSign: function (ctx, project, x, z, label, night) {
+      var pb = project(x, 0, z), pt = project(x, 3.2, z);
+      if (!pb || !pt || pb.z > 900) return;
+      ctx.strokeStyle = "#888"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(pb.x, pb.y); ctx.lineTo(pt.x, pt.y); ctx.stroke();
+      var fs = U.clamp(9000 / pb.z, 8, 22);
+      ctx.font = "bold " + Math.round(fs) + "px sans-serif";
+      var tw = ctx.measureText(label).width + 12;
+      ctx.fillStyle = night ? "#11141c" : "#0a0a0a";
+      ctx.fillRect(pt.x - tw / 2, pt.y - fs - 10, tw, fs + 8);
+      ctx.strokeStyle = "#e8c83c"; ctx.lineWidth = 2;
+      ctx.strokeRect(pt.x - tw / 2, pt.y - fs - 10, tw, fs + 8);
+      ctx.fillStyle = "#ffd34c"; ctx.textAlign = "center";
+      ctx.fillText(label, pt.x, pt.y - 12);
     },
 
     _patternTraffic: function (ctx, project, fl, night) {

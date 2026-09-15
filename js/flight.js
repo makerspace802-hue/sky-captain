@@ -375,7 +375,7 @@
           fl.phase = "TAXI_IN";
           var g = fl.activeF.gates[fl.gate % fl.activeF.gates.length];
           fl.fixes = [{ n: "GATE " + (fl.gate + 1), x: g.x, z: g.z, r: 30 }];
-          fl.atc.expected = "taxi-in"; fl.atc.rating = fl.atc.rating; fl.rating.atc.required++;
+          fl.atc.expected = "taxi-in"; fl.rating.atc.required++;
         }
         if (fl.phase === "TAXI_IN" && fl.fixes.length) {
           var gf = fl.fixes[0], dd = Math.hypot(m.x - gf.x, m.z - gf.z);

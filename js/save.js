@@ -87,6 +87,11 @@
       try { localStorage.removeItem(KEY_PROFILE); } catch (e) {}
       this.profile = null;
     },
+    eraseAll: function () {
+      try { localStorage.removeItem(KEY_PROFILE); localStorage.removeItem(KEY_SETTINGS); localStorage.removeItem(KEY_FEEDBACK); } catch (e) {}
+      this.profile = null;
+      this.settings = defaultSettings();
+    },
 
     // ---- feedback queue (synced later by FeedbackService) ----
     queueFeedback: function (entry) {

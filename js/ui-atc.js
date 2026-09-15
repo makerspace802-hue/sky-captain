@@ -109,6 +109,16 @@
           addLog("atc-chat-log", t.cs, "Going around — no landing clearance.", "me");
           addLog("atc-chat-log", "YOU", t.cs + ", roger go-around. Fly published missed approach.", "atc");
         }
+        if (t.type === "arr" && t.holding) {
+          // holding pattern: tight right-hand orbit, altitude frozen
+          t.hdg = U.wrap360(t.hdg + 30 * dt);
+          t.spd += U.clamp(160 - t.spd, -40 * dt, 25 * dt);
+          var hv = t.spd * 0.514444;
+          t.x += Math.sin(U.deg2rad(t.hdg)) * hv * dt;
+          t.z += -Math.cos(U.deg2rad(t.hdg)) * hv * dt;
+          t.cmd = "HOLDING";
+          return;
+        }
         if (!wp) { done.push(t); return; }
         self._flyTo(t, wp, dt, false);
         var d = Math.hypot(t.x - wp.x, t.z - wp.z);
@@ -158,9 +168,9 @@
         SC.Comms.speak(t.cs + ", " + atcTxt);
         if (SC.MP.connected) SC.MP.sendAtc({ from: you, to: t.cs, text: atcTxt });
       }
-      if (cmdId === "land" && t.type === "arr") { t.landClear = true; t.cmd = "CLEARED LAND"; say("runway " + SC.Airfield.rwyName(this.field.hdg) + ", cleared to land.", "Cleared to land"); }
-      else if (cmdId === "goaround" && t.type === "arr") { t.landClear = false; t.wps = this._missedWps(this.field); t.wp = 0; say("go around, fly published missed approach.", "Going around"); }
-      else if (cmdId === "hold" && t.type === "arr") { t.cmd = "HOLDING"; say("hold present position, expect further clearance.", "Holding"); }
+      if (cmdId === "land" && t.type === "arr") { t.landClear = true; t.holding = false; t.cmd = "CLEARED LAND"; say("runway " + SC.Airfield.rwyName(this.field.hdg) + ", cleared to land.", "Cleared to land"); }
+      else if (cmdId === "goaround" && t.type === "arr") { t.landClear = false; t.holding = false; t.wps = this._missedWps(this.field); t.wp = 0; say("go around, fly published missed approach.", "Going around"); }
+      else if (cmdId === "hold" && t.type === "arr") { t.holding = true; t.cmd = "HOLDING"; say("hold present position, expect further clearance.", "Holding"); }
       else if (cmdId === "taxi" && t.type === "dep") { t.taxiClear = true; t.holding = false; say("taxi to runway " + SC.Airfield.rwyName(this.field.hdg) + ", hold short.", "Taxi, wilco"); }
       else if (cmdId === "takeoff" && t.type === "dep") { t.taxiClear = true; t.takeoffClear = true; t.holding = false; say("runway " + SC.Airfield.rwyName(this.field.hdg) + ", cleared for takeoff.", "Cleared for takeoff"); }
       else if (cmdId === "holdpos" && t.type === "dep") { t.holding = true; t.takeoffClear = false; say("hold position.", "Holding position"); }

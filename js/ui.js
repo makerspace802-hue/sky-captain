@@ -501,7 +501,7 @@
       U.$("btn-save-now").addEventListener("click", function () { SC.Save.saveNow(); self.toast("💾 Saved"); });
       U.$("btn-reset-save").addEventListener("click", function () {
         self.modal("Erase everything?", "Profile + settings will be deleted.", [{ label: "CANCEL" }, {
-          label: "ERASE ALL", danger: true, fn: function () { SC.Save.eraseProfile(); location.reload(); }
+          label: "ERASE ALL", danger: true, fn: function () { SC.Save.eraseAll(); location.reload(); }
         }]);
       });
     },

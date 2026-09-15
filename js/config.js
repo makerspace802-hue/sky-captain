@@ -8,7 +8,7 @@ window.SC = SC;
 
 SC.Config = {
   gameName: "Sky Captain",
-  version: "1.0.0",
+  version: "1.1.0",
   currencySymbol: "$",
 
   // ---- Player start ----

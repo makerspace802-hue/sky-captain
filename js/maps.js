@@ -116,11 +116,7 @@
         var q = this.project(0, gt);
         ctx.beginPath(); ctx.moveTo(0, q.y); ctx.lineTo(W, q.y); ctx.stroke();
       }
-      // day/night terminator tint
-      var utcH = SC.Time.simMin / 60;
-      var noonLon = U.wrap360(180 - utcH * 15 + 180) - 180; // approx subsolar lon
-      var grd = ctx.createLinearGradient(0, 0, W, 0);
-      var nl = this.project(U.wrap360(noonLon + 180) - 180, 0).x;
+      // day/night terminator shading: soft slices across the night hemisphere
       // land
       var s = this._scale(), cell = Math.max(2, 5 * s * 0.9);
       ctx.fillStyle = "#1d3a5e";
@@ -129,9 +125,23 @@
         if (p.x < -cell || p.x > W + cell || p.y < -cell || p.y > H + cell) return;
         ctx.fillRect(p.x - cell / 2, p.y - cell / 2, cell, cell);
       });
-      // night shading on land (cheap: overlay on dark side)
-      ctx.fillStyle = "rgba(2,6,14,0.45)";
-      if (nl > 0 && nl < W) { /* keep simple: skip terminator polygon */ }
+      // night shading (cheap equirectangular terminator, soft bands)
+      (function () {
+        var utcH = SC.Time.simMin / 60;
+        var noonLon = U.wrap360(180 - utcH * 15 + 180) - 180; // approx subsolar lon
+        var nc = noonLon + 180; // midnight meridian
+        for (var k = 0; k < 24; k++) {
+          var l0 = nc - 90 + k * 7.5, l1 = l0 + 7.5;
+          var dk = Math.abs(((l0 + l1) / 2) - nc) / 90; // 0 center -> 1 edge
+          var a = 0.42 * U.clamp(1.1 - dk, 0, 1);
+          if (a <= 0.01) continue;
+          var xa = self.project(U.wrap360(l0 + 180) - 180, 0).x;
+          var xb = self.project(U.wrap360(l1 + 180) - 180, 0).x;
+          if (Math.abs(xb - xa) > W / 2) continue; // antimeridian slice
+          ctx.fillStyle = "rgba(2,6,16," + a.toFixed(3) + ")";
+          ctx.fillRect(Math.min(xa, xb), 0, Math.abs(xb - xa), H);
+        }
+      })();
       // route
       if (this.dep && this.arr) {
         var A = SC.Data.airportByCode(this.dep), B = SC.Data.airportByCode(this.arr);
@@ -252,6 +262,14 @@
         ctx.fillStyle = "#e8c83c"; ctx.fillRect(hp.x - 3, hp.y - 3, 6, 6);
         ctx.fillStyle = "#57b6ff";
         A.gates.forEach(function (g) { var gp = P(g.x, g.z); ctx.fillRect(gp.x - 1.5, gp.y - 1.5, 3, 3); });
+        // extended final course (arrival runway)
+        if (fl.sceneMode === "LOCAL_ARR") {
+          var f0 = P(A.thr.x, A.thr.z);
+          var f1 = P(A.thr.x - A.dir.x * 12000, A.thr.z - A.dir.z * 12000);
+          ctx.strokeStyle = "rgba(80,220,255,0.7)"; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
+          ctx.beginPath(); ctx.moveTo(f0.x, f0.y); ctx.lineTo(f1.x, f1.y); ctx.stroke(); ctx.setLineDash([]);
+          ctx.fillStyle = "#3ddc84"; ctx.fillRect(f0.x - 2.5, f0.y - 2.5, 5, 5);
+        }
         // fixes
         ctx.fillStyle = "#ff50dc"; ctx.font = "8px sans-serif"; ctx.textAlign = "center";
         for (var i = fl.fixIdx; i < fl.fixes.length; i++) {
@@ -268,6 +286,7 @@
         ctx.restore();
         ctx.fillStyle = "#9fdcff"; ctx.font = "9px monospace"; ctx.textAlign = "left";
         ctx.fillText(A.code + " R" + SC.Airfield.rwyName(A.hdg), 6, 12);
+        ctx.fillText("RNG " + (m.onGround ? "0.9km" : "14km"), 6, 24);
       }
     }
   };
@@ -294,7 +313,11 @@
       ctx.fillText(room.airport.code + " " + room.airport.rwy.name, cx, cy + R + 14);
       // sweep
       var sa = (Date.now() / 1000 * 0.9) % 6.283;
-      var grd = ctx.createConicGradient ? null : null;
+      for (var tr = 3; tr >= 1; tr--) {
+        ctx.strokeStyle = "rgba(60,220,130," + (0.28 / tr).toFixed(3) + ")";
+        ctx.beginPath(); ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(sa - tr * 0.12) * R, cy + Math.sin(sa - tr * 0.12) * R); ctx.stroke();
+      }
       ctx.strokeStyle = "rgba(60,220,130,0.5)";
       ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(sa) * R, cy + Math.sin(sa) * R); ctx.stroke();
       // targets

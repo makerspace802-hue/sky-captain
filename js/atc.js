@@ -75,7 +75,7 @@
               this.expected = "takeoff";
               if (ph === "PARKED") SC.Flight.setPhase("TAXI_OUT");
             } else if (ph === "TAXI_IN") {
-              this.say(this.cs() + ", taxi to gate " + F.gate + " via B. Monitor ground.");
+              this.say(this.cs() + ", taxi to gate " + (F.gate + 1) + " via B. Monitor ground.");
               if (this.expected === "taxi-in") { complied(this); this.expected = null; }
             } else this.say(this.cs() + ", negative — you are airborne. Continue as cleared.");
           }
@@ -178,7 +178,7 @@
             var s2 = this;
             setTimeout(function () {
               if (!F.over && (F.phase === "ROLLOUT" || F.phase === "TAXI_IN"))
-                s2.say(s2.cs() + ", vacate next left, taxi to gate " + F.gate + ". Welcome to " + F.arr.city + ".");
+                s2.say(s2.cs() + ", vacate next left, taxi to gate " + (F.gate + 1) + ". Welcome to " + F.arr.city + ".");
             }, 3000);
           }
         }

@@ -75,8 +75,8 @@ js/               game source (plain ES5, no modules — loads via <script> tags
   flight.js       flight model, autopilot, phases, touchdown, fuel
   atc.js          ATC engine (clearances, phrases, ratings)
   net.js          multiplayer/chat transport layer
-  render.js       canvas cockpit + 3D-ish scene renderer
-  maps.js         world map view
+  render.js       canvas cockpit + near-plane-clipped 3D-ish scene renderer
+  maps.js         world map + approach radar + flight minimap
   ui*.js          menu / flight HUD / ATC UI
   audio.js        WebAudio sounds + voice readback
   input.js        keyboard/mouse/touch/gamepad
@@ -84,6 +84,8 @@ js/               game source (plain ES5, no modules — loads via <script> tags
 tools/
   test-logic.js   unit tests (economy, ratings, ATC, saves…)
   test-flight.js  headless E2E: AI pilot flies BOM→GOI gate-to-gate + crash recovery
+  test-render.js  renderer: paints every phase day/night/storm, asserts runway stays visible
+  test-ui.js      full-app UI flow: all screens, flight, ATC shift, MP lobby, crash, results
 dist/             built package (see Build)
 ```
 
@@ -92,11 +94,31 @@ dist/             built package (see Build)
 ```bash
 node tools/test-logic.js    # unit tests — must print ALL TESTS PASSED
 node tools/test-flight.js   # E2E gate-to-gate + crash recovery — must print ALL E2E TESTS PASSED
+node tools/test-render.js   # renderer — must print ALL RENDER TESTS PASSED
+node tools/test-ui.js       # full-app UI flow — must print ALL UI FLOW TESTS PASSED
 ```
 
 The E2E test boots the real game code headless and has a scripted AI pilot taxi,
 take off, cruise, shoot the approach, land, taxi to the gate and get paid —
 plus five crash-recovery checks.
+
+## Server spec
+
+No backend needed — any static file server works (the game also runs from
+`file://`). Multiplayer ships with an offline loopback transport, so the lobby,
+ATC roles and chat all work solo with zero setup; networked rooms with real
+peers use the optional `RoomServer` WebSocket relay sketched in `js/net.js`
+(requires the `ws` npm package on the host — **not** needed to play).
+
+## Versions
+
+- **v1.1.0** — near-plane-clipped renderer (runways never vanish up close),
+  richer terrain (forests, lakes, city blocks), airfield detail (TDZ markings,
+  both runway numbers, REIL strobes, hangars, fuel farm, floodlights, taxi
+  signs, service road), day/night map terminator, radar sweep trail, minimap
+  final-course line, working ATC hold orbits, 100% client-side renderer + UI
+  regression suites.
+- **v1.0.0** — initial release: full career sim, ATC, multiplayer, E2E-tested.
 
 ## Build
 
@@ -109,4 +131,5 @@ Output: `dist/sky-captain/` (playable copy) and `dist/sky-captain.zip`
 
 ## License
 
-Free to play and share. Built with plain HTML/CSS/JS — no engine, no SDKs, no ads.
+Free to play and share. Built with plain HTML/CSS/JS — no engine, no SDKs, no
+third-party assets (all art and audio are generated in code), no ads.

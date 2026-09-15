@@ -267,7 +267,7 @@
       this._tape(U.$("tape-alt"), m.altFt, 100, "_lastAlt");
       this._attitude(m);
       // fuel
-      var pct = m.onGround || true ? fl.fuel / fl.st.fuelCap : 0;
+      var pct = fl.fuel / fl.st.fuelCap;
       var bar = U.$("hud-fuel-bar");
       bar.style.width = (U.clamp(pct, 0, 1) * 100) + "%";
       bar.style.background = pct > 0.5 ? "" : pct > 0.2 ? "linear-gradient(90deg,#8a6a10,#ffb020)" : "linear-gradient(90deg,#7e1b1b,#ff5a5a)";
@@ -296,7 +296,7 @@
 
     _tape: function (strip, val, step, lastKey) {
       var win = strip.parentElement, center = win.clientHeight / 2;
-      var idx = Math.round(val / step);
+      var idx = U.clamp(Math.round(val / step), 0, Math.max(0, strip.children.length - 1));
       strip.style.transform = "translateY(" + (center - idx * 22 - 11) + "px)";
       if (this[lastKey] !== idx) {
         if (strip.children[this[lastKey]]) strip.children[this[lastKey]].classList.remove("cur");

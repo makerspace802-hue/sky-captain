@@ -4,7 +4,7 @@
 Usage:  python3 tools/bundle.py [--skip-tests]
 
 Steps:
-  1. Run tools/test-logic.js and tools/test-flight.js (fail fast).
+  1. Run tools/test-logic.js, tools/test-flight.js and tools/test-render.js (fail fast).
   2. Copy index.html, css/, js/, README.md into dist/sky-captain/.
   3. Stamp dist/sky-captain/build.json (version, date, file list).
   4. Zip it as dist/sky-captain.zip.
@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIST = os.path.join(ROOT, "dist")
 STAGE = os.path.join(DIST, "sky-captain")
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 
 def run(cmd, cwd=ROOT):
@@ -37,6 +37,8 @@ def main():
     if not skip_tests:
         run(["node", "tools/test-logic.js"])
         run(["node", "tools/test-flight.js"])
+        run(["node", "tools/test-render.js"])
+        run(["node", "tools/test-ui.js"])
     else:
         print("(skipping tests)")
 

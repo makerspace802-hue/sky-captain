@@ -132,12 +132,12 @@
       else {
         if (this.down[K.pitchUp]) out.pitch += 1;
         if (this.down[K.pitchDn]) out.pitch -= 1;
-        if (this.down[K.rollR]) out.roll += 1;
-        if (this.down[K.rollL]) out.roll -= 1;
+        if (this.down[K.rollR] || (!S.rudderKeys && this.down[K.rudderR])) out.roll += 1;
+        if (this.down[K.rollL] || (!S.rudderKeys && this.down[K.rudderL])) out.roll -= 1;
         out.pitch *= inv;
       }
-      if (this.down[K.rudderR] || (!S.rudderKeys && false)) out.yaw += 1;
-      if (this.down[K.rudderL]) out.yaw -= 1;
+      if (S.rudderKeys !== false && this.down[K.rudderR]) out.yaw += 1;
+      if (S.rudderKeys !== false && this.down[K.rudderL]) out.yaw -= 1;
       if (this.down.__padBrake || this.down[K.brake] || this.down[K.brakeAlt]) out.brake = 1;
       if (this.down[K.throttleUp]) out.thrDelta += 1;
       if (this.down[K.throttleDn]) out.thrDelta -= 1;
