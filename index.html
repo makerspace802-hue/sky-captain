@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a1628">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Sky Captain — Global Airline Simulator</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ LOADING ============ -->
+  <div id="loading-overlay">
+    <div class="load-box">
+      <div class="logo-mark">✈</div>
+      <div class="logo-title">SKY CAPTAIN</div>
+      <div class="logo-sub">GLOBAL AIRLINE SIMULATOR</div>
+      <div class="load-bar"><div id="load-fill"></div></div>
+      <div id="load-text">Initializing flight systems…</div>
+    </div>
+  </div>
+
+  <!-- ============ MAIN MENU ============ -->
+  <section id="screen-main" class="screen">
+    <div class="menu-bg"></div>
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">✈</span><div><div class="brand-name">SKY CAPTAIN</div><div class="brand-sub">GLOBAL AIRLINE SIMULATOR</div></div></div>
+      <div class="pilot-chip" id="menu-pilot-chip">
+        <div class="avatar" id="menu-avatar">🛩️</div>
+        <div class="pilot-meta"><div id="menu-pilot-name">—</div><div class="money" id="menu-money">$0</div></div>
+      </div>
+    </header>
+    <div class="menu-hero">
+      <h1>TAKE COMMAND<span> OF THE SKIES</span></h1>
+      <p>From student pilot to super-jumbo captain. Fly worldwide, talk to ATC, build your career.</p>
+    </div>
+    <nav class="menu-grid" id="main-menu-grid">
+      <button class="menu-btn primary" data-go="career"><span class="mb-ico">🎖️</span><span class="mb-t">CAREER</span><span class="mb-s">Missions &amp; progression</span></button>
+      <button class="menu-btn primary" data-go="freeflight"><span class="mb-ico">🌍</span><span class="mb-t">FREE FLIGHT</span><span class="mb-s">Fly anywhere</span></button>
+      <button class="menu-btn" data-go="multiplayer"><span class="mb-ico">🛫</span><span class="mb-t">MULTIPLAYER</span><span class="mb-s">Fly together</span></button>
+      <button class="menu-btn" data-go="atc"><span class="mb-ico">🎙️</span><span class="mb-t">ATC</span><span class="mb-s">Control traffic</span></button>
+      <button class="menu-btn" data-go="tutorial"><span class="mb-ico">🎓</span><span class="mb-t">TRAINING</span><span class="mb-s">Learn to fly</span></button>
+      <button class="menu-btn" data-go="hangar"><span class="mb-ico">✈️</span><span class="mb-t">AIRCRAFT</span><span class="mb-s">Hangar &amp; upgrades</span></button>
+      <button class="menu-btn" data-go="map"><span class="mb-ico">🗺️</span><span class="mb-t">WORLD MAP</span><span class="mb-s">Plan routes</span></button>
+      <button class="menu-btn" data-go="profile"><span class="mb-ico">👨‍✈️</span><span class="mb-t">PROFILE</span><span class="mb-s">Pilot &amp; licenses</span></button>
+      <button class="menu-btn" data-go="settings"><span class="mb-ico">⚙️</span><span class="mb-t">SETTINGS</span><span class="mb-s">Controls &amp; options</span></button>
+    </nav>
+    <footer class="menu-foot">
+      <span>v1.0.0 • Ads-free • No pay-to-win • Earnings in US dollars ($)</span>
+      <span id="menu-save-state"></span>
+    </footer>
+  </section>
+
+  <!-- ============ PILOT CREATION ============ -->
+  <section id="screen-pilot" class="screen hidden">
+    <header class="page-head"><button class="back-btn" data-go="main">‹ BACK</button><h2>PILOT DOSSIER</h2></header>
+    <div class="page-body narrow">
+      <div class="card">
+        <h3>CREATE YOUR PILOT</h3>
+        <label class="fld-label">Pilot name / callsign name</label>
+        <input id="pilot-name-input" maxlength="20" placeholder="e.g. Captain Sharma" autocomplete="off">
+        <label class="fld-label">Choose your captain</label>
+        <div id="avatar-grid" class="avatar-grid"></div>
+        <div class="info-row"><span>Starting bonus</span><strong id="pilot-start-money" class="money">$25,000</strong></div>
+        <div class="info-row"><span>Starter aircraft</span><strong>SK-1 Sparrow (owned)</strong></div>
+        <div class="info-row"><span>Starting license</span><strong>Student Pilot</strong></div>
+        <button id="btn-create-pilot" class="btn primary big">BEGIN CAREER ✈</button>
+      </div>
+      <div class="card" id="existing-profile-card">
+        <h3>EXISTING PROFILE</h3>
+        <div id="existing-profile-info" class="muted">No saved profile found.</div>
+        <div class="btn-row">
+          <button id="btn-continue-profile" class="btn primary">CONTINUE</button>
+          <button id="btn-delete-profile" class="btn danger">NEW CAREER (erase)</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HANGAR ============ -->
+  <section id="screen-hangar" class="screen hidden">
+    <header class="page-head"><button class="back-btn" data-go="main">‹ BACK</button><h2>AIRCRAFT HANGAR</h2><div class="head-money money" id="hangar-money">$0</div></header>
+    <div class="page-body split">
+      <div id="hangar-list" class="hangar-list"></div>
+      <div class="hangar-detail">
+        <div class="card">
+          <div class="ac-head"><div id="hangar-ac-icon" class="ac-icon">🛩️</div>
+            <div><h3 id="hangar-ac-name">—</h3><div id="hangar-ac-class" class="muted">—</div></div>
+            <div id="hangar-ac-owned" class="pill">—</div>
+          </div>
+          <div id="hangar-ac-stats" class="stat-grid"></div>
+          <div id="hangar-ac-lock" class="lock-note hidden"></div>
+          <div class="btn-row">
+            <button id="btn-buy-aircraft" class="btn primary">BUY</button>
+            <button id="btn-select-aircraft" class="btn">SELECT</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>UPGRADES</h3>
+          <div id="hangar-upgrades"></div>
+        </div>
+        <div class="card">
+          <h3>⛽ REFUEL <span class="muted small">— pay only for what you add</span></h3>
+          <div class="fuel-bar-wrap"><div id="hangar-fuel-bar" class="fuel-bar"></div><span id="hangar-fuel-text">0 / 0</span></div>
+          <input id="refuel-slider" type="range" min="0" max="100" value="0">
+          <div class="info-row"><span>Add fuel</span><strong id="refuel-amount">0 units</strong></div>
+          <div class="info-row"><span>Price</span><strong id="refuel-price" class="money">$0</strong></div>
+          <div class="info-row"><span>Balance after</span><strong id="refuel-after" class="money">$0</strong></div>
+          <div class="btn-row">
+            <button id="btn-refuel" class="btn primary">⛽ BUY FUEL</button>
+            <button id="btn-refuel-full" class="btn">FILL TANK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WORLD MAP / FLIGHT SETUP ============ -->
+  <section id="screen-map" class="screen hidden">
+    <header class="page-head"><button class="back-btn" data-go="main">‹ BACK</button><h2 id="map-title">WORLD MAP</h2><div class="head-money money" id="map-money">$0</div></header>
+    <div class="page-body split map-split">
+      <div class="map-wrap">
+        <canvas id="worldmap-canvas"></canvas>
+        <div class="map-hint">Tap an airport to select • Drag to pan • Scroll / pinch to zoom</div>
+        <div class="map-toolbar">
+          <input id="airport-search" placeholder="🔍 Search airport / city / code">
+          <button id="btn-map-reset" class="btn small">RESET VIEW</button>
+        </div>
+        <div id="airport-search-results" class="search-results hidden"></div>
+      </div>
+      <div class="map-side">
+        <div class="card">
+          <h3>FLIGHT PLAN</h3>
+          <label class="fld-label">Departure</label><select id="sel-departure"></select>
+          <label class="fld-label">Destination</label><select id="sel-destination"></select>
+          <label class="fld-label">Aircraft</label><select id="sel-aircraft"></select>
+          <div id="route-info" class="stat-grid"></div>
+          <div id="route-warn" class="warn-note hidden"></div>
+          <button id="btn-fly" class="btn primary big">🛫 START FLIGHT</button>
+        </div>
+        <div class="card">
+          <h3>WEATHER BRIEFING</h3>
+          <div id="weather-brief" class="muted">Select airports for briefing.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FLIGHT ============ -->
+  <section id="screen-flight" class="screen hidden">
+    <canvas id="flight-canvas"></canvas>
+    <div id="hud-top">
+      <div class="hud-route"><strong id="hud-route">BOM → GOI</strong><span id="hud-phase" class="phase-pill">TAXI</span></div>
+      <div class="hud-mid"><span id="hud-clock">12:00 UTC</span><span id="hud-accel-label">1×</span></div>
+      <div class="hud-btns">
+        <button class="hbtn" id="btn-accel" title="Time acceleration">⏩ <span id="hud-accel">1×</span></button>
+        <button class="hbtn" id="btn-ap" title="Autopilot">AP</button>
+        <button class="hbtn" id="btn-cam" title="Camera">🎥</button>
+        <button class="hbtn" id="btn-pause" title="Pause">⏸</button>
+        <button class="hbtn danger" id="btn-endflight" title="End flight">✕</button>
+      </div>
+    </div>
+    <div id="tutorial-banner" class="hidden"><div id="tutorial-step-text"></div><div id="tutorial-progress"></div></div>
+    <div id="flight-banner" class="hidden"></div>
+    <div id="hud-warnings"></div>
+    <div id="hud-left">
+      <div class="pfd">
+        <div class="tape speed"><div class="tape-label">SPD <span id="v-ias">0</span></div><div class="tape-window"><div id="tape-spd" class="tape-strip"></div></div><div class="tape-unit">KT</div></div>
+        <div class="att-wrap"><canvas id="att-canvas" width="150" height="150"></canvas><div class="fd-hdg">HDG <span id="v-hdg">000</span>°</div></div>
+        <div class="tape alt"><div class="tape-label">ALT <span id="v-alt">0</span></div><div class="tape-window"><div id="tape-alt" class="tape-strip"></div></div><div class="tape-unit">FT</div></div>
+      </div>
+      <div class="pfd-sub"><span>V/S <strong id="v-vs">0</strong> fpm</span><span>THR <strong id="v-thr">0</strong>%</span><span>FLP <strong id="v-flp">0</strong></span><span>GEAR <strong id="v-gear">DN</strong></span></div>
+      <div class="fuel-hud"><div class="fuel-bar-wrap slim"><div id="hud-fuel-bar" class="fuel-bar"></div></div><span id="hud-fuel-text">FUEL 100%</span></div>
+    </div>
+    <div id="hud-right">
+      <canvas id="minimap-canvas" width="172" height="172"></canvas>
+      <div id="nav-info"><div><span>DIST</span><strong id="v-dist">—</strong></div><div><span>ETE</span><strong id="v-ete">—</strong></div><div><span>PROG</span><strong id="v-prog">0%</strong></div></div>
+      <div class="eng-btns">
+        <button id="btn-gear" class="ebtn">GEAR</button>
+        <button id="btn-flaps" class="ebtn">FLAPS+</button>
+        <button id="btn-flaps-dn" class="ebtn">FLAPS−</button>
+        <button id="btn-brake" class="ebtn">BRK</button>
+      </div>
+      <div class="thr-wrap"><input id="hud-throttle" type="range" min="0" max="100" value="0"><label>THROTTLE</label></div>
+    </div>
+    <div id="stick-zone"><div id="stick-base"><div id="stick-nub"></div></div><div class="stick-label">PITCH / ROLL</div></div>
+    <div id="atc-panel">
+      <div class="atc-tabs">
+        <button class="atc-tab active" data-tab="radio">📻 ATC</button>
+        <button class="atc-tab" data-tab="chat">💬 CHAT <span id="chat-unread" class="hidden">•</span></button>
+        <button class="atc-tab" data-tab="check">✅ CHECKLIST</button>
+        <button id="btn-atc-collapse">▾</button>
+      </div>
+      <div class="atc-body">
+        <div id="atc-tab-radio" class="atc-tabpage">
+          <div id="phrase-grid"></div>
+          <div class="voice-row"><button id="btn-voice" class="btn small">🎤 HOLD TO TALK</button><span id="voice-status" class="muted small">Voice ready</span></div>
+        </div>
+        <div id="atc-tab-chat" class="atc-tabpage hidden">
+          <div id="chat-log"></div>
+          <div class="chat-input-row"><input id="chat-input" placeholder="Message ATC…" maxlength="140"><button id="btn-chat-send" class="btn small primary">SEND</button></div>
+        </div>
+        <div id="atc-tab-check" class="atc-tabpage hidden"><div id="checklist"></div></div>
+      </div>
+    </div>
+    <div id="pause-menu" class="hidden">
+      <div class="card"><h3>PAUSED</h3>
+        <div class="btn-col">
+          <button id="btn-resume" class="btn primary">RESUME</button>
+          <button id="btn-pause-help" class="btn">CONTROLS HELP</button>
+          <button id="btn-pause-fuel" class="btn">\u26fd FUEL TRUCK</button>
+          <button id="btn-pause-end" class="btn danger">END FLIGHT</button>
+        </div>
+      </div>
+    </div>
+    <div id="controls-help" class="hidden">
+      <div class="card"><h3>CONTROLS</h3><div id="controls-help-body"></div>
+        <button id="btn-help-close" class="btn primary">CLOSE</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RESULTS ============ -->
+  <section id="screen-results" class="screen hidden">
+    <header class="page-head"><h2 id="results-title">FLIGHT COMPLETE</h2></header>
+    <div class="page-body narrow">
+      <div class="card center">
+        <div id="results-route" class="results-route">BOM → GOI</div>
+        <div id="results-stars" class="stars">★★★★★</div>
+        <div id="results-score" class="muted">4.8 / 5</div>
+      </div>
+      <div class="card"><h3>FLIGHT DATA</h3><div id="results-data" class="stat-grid"></div></div>
+      <div class="card"><h3>EARNINGS</h3><div id="results-pay"></div></div>
+      <div class="card"><h3>RATING BREAKDOWN</h3><div id="results-break"></div></div>
+      <div class="card"><h3>💡 CAPTAIN'S TIPS</h3><div id="results-tips" class="tips"></div></div>
+      <div class="card"><h3>HOW WAS YOUR FLIGHT?</h3>
+        <div id="fb-stars" class="stars clickable">★★★★★</div>
+        <textarea id="fb-text" rows="3" maxlength="500" placeholder="Suggestion (optional)…"></textarea>
+        <div class="btn-row"><button id="btn-fb-submit" class="btn primary">SUBMIT</button><button id="btn-fb-skip" class="btn">SKIP</button></div>
+        <div class="muted small">Feedback is stored on this device and queued to sync with the Sky Captain service when online.</div>
+      </div>
+      <div class="card"><div class="btn-grid">
+        <button class="btn primary" data-go="map">WORLD MAP</button>
+        <button class="btn" data-go="freeflight">FREE FLIGHT</button>
+        <button class="btn" data-go="career">NEXT MISSION</button>
+        <button class="btn" data-go="hangar">AIRCRAFT</button>
+        <button class="btn" data-go="main">MAIN MENU</button>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- ============ PROFILE ============ -->
+  <section id="screen-profile" class="screen hidden">
+    <header class="page-head"><button class="back-btn" data-go="main">‹ BACK</button><h2>PILOT PROFILE</h2></header>
+    <div class="page-body narrow">
+      <div class="card center"><div id="profile-avatar" class="avatar big">🛩️</div><h3 id="profile-name">—</h3><div id="profile-level" class="pill">Student Pilot</div></div>
+      <div class="card"><h3>STATISTICS</h3><div id="profile-stats" class="stat-grid"></div></div>
+      <div class="card"><h3>LICENSES</h3><div id="profile-licenses"></div></div>
+      <div class="card"><h3>ACHIEVEMENTS</h3><div id="profile-achievements" class="chips"></div></div>
+    </div>
+  </section>
+
+  <!-- ============ CAREER ============ -->
+  <section id="screen-career" class="screen hidden">
+    <header class="page-head"><button class="back-btn" data-go="main">‹ BACK</button><h2>CAREER MISSIONS</h2><div class="head-money money" id="career-money">$0</div></header>
+    <div class="page-body"><div id="mission-list" class="mission-list"></div></div>
+  </section>
+
+  <!-- ============ TUTORIAL ============ -->
+  <section id="screen-tutorial" class="screen hidden">
+    <header class="page-head"><button class="back-btn" data-go="main">‹ BACK</button><h2>FLIGHT TRAINING</h2></header>
+    <div class="page-body"><div id="lesson-list" class="mission-list"></div></div>
+  </section>
+
+  <!-- ============ MULTIPLAYER ============ -->
+  <section id="screen-multiplayer" class="screen hidden">
+    <header class="page-head"><button class="back-btn" data-go="main">‹ BACK</button><h2>MULTIPLAYER</h2><div id="mp-conn" class="pill">OFFLINE</div></header>
+    <div class="page-body split">
+      <div>
+        <div class="card"><h3>SESSION</h3>
+          <label class="fld-label">Callsign</label><input id="mp-callsign" maxlength="10" placeholder="e.g. SKC101">
+          <label class="fld-label">Server</label>
+          <select id="mp-server"><option value="local">Local airspace simulation (offline-ready)</option><option value="ws">Custom server (WebSocket)…</option></select>
+          <input id="mp-ws-url" class="hidden" placeholder="wss://your-server.example/sky-captain">
+          <label class="fld-label">Airport</label><select id="mp-airport"></select>
+          <label class="fld-label">Role</label><select id="mp-role"><option value="pilot">Pilot</option><option value="atc-ground">ATC — Ground</option><option value="atc-tower">ATC — Tower</option><option value="atc-approach">ATC — Approach</option></select>
+          <div class="btn-row"><button id="btn-mp-connect" class="btn primary">JOIN AIRSPACE</button><button id="btn-mp-leave" class="btn">LEAVE</button></div>
+          <div class="muted small">Networking is server-authoritative by design. This build ships with a local simulation transport plus a WebSocket transport for real servers — same protocol, no fake systems. See README for the server spec.</div>
+        </div>
+        <div class="card"><h3>PILOTS IN AIRSPACE <span id="mp-count" class="pill">0</span></h3><div id="mp-players"></div></div>
+      </div>
+      <div>
+        <div class="card"><h3>ATC POSITIONS</h3><div id="mp-atc-slots"></div></div>
+        <div class="card"><h3>AIRSPACE CHAT</h3><div id="mp-chat-log" class="chat-log tall"></div>
+          <div class="chat-input-row"><input id="mp-chat-input" placeholder="Say something…" maxlength="140"><button id="btn-mp-chat" class="btn small primary">SEND</button></div>
+        </div>
+        <div class="card"><button id="btn-mp-fly" class="btn primary big">🛫 ENTER AIRSPACE &amp; FLY</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ATC MODE ============ -->
+  <section id="screen-atc" class="screen hidden">
+    <header class="page-head"><button class="back-btn" data-go="main">‹ BACK</button><h2 id="atc-title">ATC — TOWER</h2><div id="atc-airport-label" class="pill">BOM</div></header>
+    <div class="page-body split map-split">
+      <div class="map-wrap"><canvas id="radar-canvas"></canvas><div class="map-hint">Click a target to select • Issue instructions from the panel</div></div>
+      <div class="map-side">
+        <div class="card"><h3>POSITION SETUP</h3>
+          <label class="fld-label">Airport</label><select id="atc-airport"></select>
+          <label class="fld-label">Position</label><select id="atc-position"><option value="ground">Ground</option><option value="tower" selected>Tower</option><option value="approach">Approach</option><option value="departure" disabled>Departure (server update)</option><option value="center" disabled>Center (server update)</option></select>
+          <button id="btn-atc-start" class="btn primary">START SHIFT</button>
+        </div>
+        <div class="card"><h3>SELECTED: <span id="atc-selected">—</span></h3><div id="atc-commands" class="btn-grid"></div></div>
+        <div class="card"><h3>STRIPS</h3><div id="atc-strips"></div></div>
+        <div class="card"><h3>FREQUENCY</h3><div id="atc-chat-log" class="chat-log"></div>
+          <div class="chat-input-row"><input id="atc-chat-input" placeholder="Transmit…" maxlength="140"><button id="btn-atc-send" class="btn small primary">TX</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section id="screen-settings" class="screen hidden">
+    <header class="page-head"><button class="back-btn" data-go="main">‹ BACK</button><h2>SETTINGS</h2></header>
+    <div class="page-body narrow">
+      <div class="card"><h3>🎮 CONTROLS</h3>
+        <label class="fld-label">Control mode</label>
+        <select id="set-control"><option value="stick">Virtual stick (touch / mouse)</option><option value="tilt">Tilt (mobile gyro)</option><option value="mouse">Mouse yoke</option></select>
+        <label class="check"><input type="checkbox" id="set-invert"> Invert pitch</label>
+        <label class="check"><input type="checkbox" id="set-rudder-keys"> Rudder on A/D + arrow assist</label>
+        <button id="btn-tilt-enable" class="btn small">ENABLE TILT (iOS needs this tap)</button>
+      </div>
+      <div class="card"><h3>✈ DIFFICULTY &amp; ASSISTS</h3>
+        <select id="set-difficulty"><option value="easy">EASY — full assists</option><option value="normal" selected>NORMAL — some assists</option><option value="realistic">REALISTIC — minimal assists</option><option value="expert">EXPERT — no assists</option></select>
+        <div class="muted small">Assists: auto-coordination, stall protection, landing guidance, tolerance windows.</div>
+      </div>
+      <div class="card"><h3>🎥 GRAPHICS</h3>
+        <select id="set-quality"><option value="low">LOW (fast)</option><option value="medium" selected>MEDIUM</option><option value="high">HIGH (rich)</option></select>
+        <label class="check"><input type="checkbox" id="set-camera" checked> Cockpit camera (uncheck = chase view)</label>
+      </div>
+      <div class="card"><h3>🔊 AUDIO</h3>
+        <label class="check"><input type="checkbox" id="set-sound" checked> Sound on</label>
+        <label class="fld-label">Volume</label><input id="set-volume" type="range" min="0" max="100" value="70">
+        <label class="check"><input type="checkbox" id="set-atc-voice" checked> ATC voice readout</label>
+      </div>
+      <div class="card"><h3>⌚ SIMULATION</h3>
+        <label class="fld-label">Distance units</label><select id="set-units"><option value="km">Kilometers</option><option value="nm">Nautical miles</option></select>
+        <div class="muted small">Time acceleration (1×–8×) is available in flight via ⏩. Multiplayer airspace is fixed at 1×.</div>
+      </div>
+      <div class="card"><h3>💾 DATA</h3>
+        <div class="btn-row"><button id="btn-save-now" class="btn">SAVE NOW</button><button id="btn-reset-save" class="btn danger">ERASE SAVE</button></div>
+        <div class="muted small">Progress auto-saves. All systems use one central save file — no scattered preferences.</div>
+      </div>
+    </div>
+  </section>
+
+  <div id="toast-container"></div>
+  <div id="modal-container" class="hidden"><div class="card" id="modal-card"><h3 id="modal-title"></h3><div id="modal-body"></div><div class="btn-row" id="modal-btns"></div></div></div>
+</div>
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/data.js"></script>
+<script src="js/save.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/input.js"></script>
+<script src="js/core.js"></script>
+<script src="js/atc.js"></script>
+<script src="js/net.js"></script>
+<script src="js/flight.js"></script>
+<script src="js/render.js"></script>
+<script src="js/maps.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/ui-flight.js"></script>
+<script src="js/ui-atc.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
